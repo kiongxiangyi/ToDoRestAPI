@@ -27,24 +27,51 @@ app.UseHttpsRedirection();
 // Dictionary to store todo items with integer keys (Ids) and string values (Content).
 var todoData = new Dictionary<int, string>();
 
-app.MapGet("/todo", () =>
+app.MapGet("/todos", () =>
 {
     return todoData;
 })
 .WithName("GetToDo")
-.WithOpenApi();
-
-
-app.MapPost("/todos", (TodoItem todoItem) =>
+.WithOpenApi(operation => new(operation)
 {
+    Summary = "Get all ToDos",
+    Description = "Retrieve a list of all ToDo items."
+});
+
+app.MapGet("/todos/{id}", (int id) =>
+{
+    if (!todoData.TryGetValue(id, out var todo))
+    {
+        return Results.NotFound("Not Found");
+    };
+    return Results.Ok(todo);
+})
+
+.WithName("GetToDoByID")
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Get ToDo by ID",
+    Description = "Retrieve a ToDo item by its ID."
+});
+
+
+app.MapPost("/todos", (string content) =>
+{
+    // Find the maximum key in the dictionary
+    int nextId = todoData.Keys.Count > 0 ? todoData.Keys.Max() + 1 : 1;
+
     //method Add: Adds the specified key and value to the dictionary.
-    todoData.Add(todoItem.Id, todoItem.Content);
+    todoData.Add(nextId, content);
     return todoData;
 })
 .WithName("CreateNewToDO")
-.WithOpenApi();
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Create a new ToDo",
+    Description = "Add a new ToDo item to the list."
+});
 
-app.MapPut("/todos/{id}", (TodoItem updatedTodo, int id) =>
+app.MapPut("/todos/{id}", (int id, string content) =>
 {
     //method TryGetValue: Gets the value associated with the specified key.
     if (!todoData.TryGetValue(id, out _)) //ignore output
@@ -52,13 +79,17 @@ app.MapPut("/todos/{id}", (TodoItem updatedTodo, int id) =>
         return Results.NotFound("Not Found");
     };
 
-    todoData[id] = updatedTodo.Content;
+    todoData[id] = content;
 
     return Results.Ok(todoData);
 
 })
 .WithName("UpdateToDo")
-.WithOpenApi();
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Update ToDo by ID",
+    Description = "Update a ToDo item by its ID."
+});
 
 app.MapDelete("/todos/{id}", (int id) =>
 {
@@ -70,7 +101,11 @@ app.MapDelete("/todos/{id}", (int id) =>
     return Results.Ok(todoData);
 })
 .WithName("DeleteToDo")
-.WithOpenApi();
+.WithOpenApi(operation => new(operation)
+{
+    Summary = "Delete ToDo by ID",
+    Description = "Delete a ToDo item by its ID."
+});
 
 //Run() starts the web application and begins listening for incoming HTTP requests.
 app.Run();
@@ -78,6 +113,5 @@ app.Run();
 
 class TodoItem
 {
-    public int Id { get; set; }
     public required string Content { get; set; }
 }
